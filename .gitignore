@@ -1,0 +1,16 @@
+# Backend
+VehicleApplication/target/
+VehicleApplication/.idea/
+VehicleApplication/*.iml
+
+# Frontend
+vue-VehicleApplication/node_modules/
+vue-VehicleApplication/dist/
+vue-VehicleApplication/.vscode/
+vue-VehicleApplication/.claude/
+
+# General
+*.log
+.DS_Store
+.claude/
+.idea/
