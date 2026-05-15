@@ -1,108 +1,672 @@
-部门流程系统（用车申请审批版）需求设计文档
-模块1：组织管理（基础支撑模块）
-核心包含部门管理、角色管理、账号管理，为整个系统提供组织架构与权限基础，三者关联关系：一个账号属于一个部门、可绑定一个角色；一个角色可关联多个账号、对应多个权限；一个部门可包含多个账号、多个角色（部门内角色可差异化配置）。
-1.1 部门管理
-•核心功能：部门层级管理（树形结构展示）、部门新增、编辑、删除、禁用/启用、排序，查看部门下关联的账号与角色。
-•关键字段：部门ID（主键）、部门名称、上级部门ID（顶级部门为0）、部门排序、部门描述、状态（启用/禁用）、创建时间、创建人。
-•约束条件：
+# 用车申请审批系统 — 项目参考文档
 
-￮支持多级部门（如总公司→行政部→用车管理组、总公司→技术部），层级无上限（合理控制在5级内，保证易用性）；
-￮删除部门前，需清空部门下所有账号（或批量转移至其他部门），禁止删除存在账号的部门；
-￮部门名称唯一，不可重复；上级部门禁用时，下级部门同步禁用（不可操作相关业务）。
-1.2 角色管理
-•核心功能：角色新增、编辑、删除、禁用/启用，角色权限分配（绑定菜单、操作按钮权限），查看角色下关联的账号。
-•关键字段：角色ID（主键）、角色名称、角色描述、权限标识集合（如部门管理权限、用车申请发起权限、审批权限等）、状态（启用/禁用）、创建时间。
-•核心角色划分（预设基础角色，可自定义新增）：
-        
-￮超级管理员：拥有系统所有操作权限，管理全量部门、角色、账号、流程、用车申请；
-￮部门管理员：管理本部门及下级部门的账号、查看本部门用车申请，拥有本部门相关流程的审批权限；
-￮用车管理员：负责预设用车审批流程、维护审批人，查看全量用车申请，处理用车相关异常；
-￮普通员工：仅拥有用车申请发起权限、查看自己的用车申请及审批状态，无管理权限；
-￮审批人：仅拥有对应预设流程节点的审批权限，可查看待自己审批的用车申请，执行同意/驳回操作。
-•约束条件：角色名称唯一，不可重复；禁用角色后，绑定该角色的账号将失去对应角色的所有权限。
-1.3 账号管理
-•核心功能：账号新增、编辑、删除、禁用/启用，密码重置（管理员操作），账号绑定部门与角色，个人信息修改（登录后自行操作）。
-•关键字段：账号ID（主键）、登录用户名（唯一）、密码、真实姓名、手机号、邮箱（用于接收审批提醒）、所属部门ID、角色ID集合、状态（启用/禁用）、最后登录时间、创建时间。		
-•约束条件：
-        
-￮登录用户名、手机号、邮箱唯一，不可重复；
-￮一个账号仅可关联一个部门；
-￮禁用账号后，该账号无法登录系统，未完成的用车申请可正常流转（但账号无法操作）；
-￮密码重置后，系统自动生成临时密码，通知用户修改，临时密码有效期24小时。
-模块2：流程管理（核心业务支撑模块）
-核心实现审批流程的预设、管理，支持自定义流程节点、指定审批人，为用车申请审批提供流转规则，流程可复用、可修改，适配不同场景的用车审批需求（如部门内部用车、跨部门用车、长途用车等）。
-2.1 流程模板管理
-•核心功能：流程模板新增、编辑、删除、启用/禁用，查看流程模板详情，配置流程节点及对应审批人。
-•关键字段：流程模板ID（主键）、流程名称（如“部门内部用车审批流程”“跨部门用车审批流程”）、流程描述、流程类型（绑定用车申请）、审批节点配置（JSON格式存储，包含节点顺序、节点名称、审批人/审批角色、审批规则）、状态（启用/禁用）、创建人、创建时间、修改时间。
-•审批节点配置（核心）：
-        
-￮节点顺序：按数字排序（1、2、3...），流程按节点顺序流转，上一节点审批通过后，自动进入下一节点；
-￮审批人配置：支持两种方式（二选一或组合）——指定具体账号（如行政部张三）、指定角色（如部门管理员），支持多人审批（会签：所有指定人都同意才算通过；或签：任意一人同意即可通过）；
-￮审批规则：可设置审批超时时间（如24小时未审批，自动提醒审批人）、驳回规则（驳回后返回至发起人，可修改后重新提交）。
-•约束条件：
-        
-￮流程模板名称唯一，不可重复；
-￮启用的流程模板可被用车申请关联，禁用后不可关联，但已关联该模板的未完成用车申请可正常流转；
-￮删除流程模板前，需确认无未完成的用车申请关联该模板，否则禁止删除
-￮
-流程类型包括部门内、跨部门、长途用车
-2.2 审批人管理（关联流程模板）
-•核心功能：为已创建的流程模板分配审批人、修改审批人、删除审批人，查看某流程模板的所有审批人及对应节点。
-•补充说明：审批人可动态调整，调整后，未流转至该节点的用车申请按新审批人执行，已流转至该节点的仍按原审批人执行（避免流程混乱）。
-•
-模块3：用车申请管理（核心业务模块）
-核心实现用户提交用车申请、关联预设流程、流程自动流转审批、审批结果提醒，全程可追溯，支持申请查询、修改、撤销（未审批完成前）。
-3.1 用车申请提交
-•核心功能：登录用户（拥有用车申请权限）可提交用车申请，填写申请信息、选择关联的流程模板，提交后进入流程审批环节。
-•申请信息（必填项）：申请标题、用车日期（起止时间）、用车事由、用车人数、目的地、申请车辆类型（如轿车、商务车）、附件（可选，如用车相关证明材料）、申请人（自动关联当前登录账号）、所属部门（自动关联当前账号所属部门）。
-•约束条件：
-        
-￮仅启用状态的流程模板可被选择关联；
-￮申请人仅可提交本部门相关的用车申请（跨部门用车需选择对应跨部门流程模板）；
-￮申请信息填写不完整时，无法提交；用车日期需大于当前日期（紧急用车可特殊设置，需额外说明）。
-3.2 用车申请审批流转
-•核心流程：申请人提交申请 → 系统按关联的流程模板，自动将申请流转至第一个审批节点的审批人 → 审批人执行同意/驳回操作 → 同意则流转至下一审批节点，驳回则返回至申请人 → 所有节点审批通过，流程结束（审批通过）；任意节点驳回，流程结束（审批驳回）。
-•审批操作功能：
-        
-￮审批人登录系统后，可查看“待我审批”列表（按审批时间排序），查看申请详情、附件；
-￮执行同意操作：需填写审批意见（可选），提交后自动流转至下一节点，同步提醒下一审批人；
-￮执行驳回操作：需填写驳回原因（必填），提交后返回至申请人，同步提醒申请人；
-￮转审操作（可选）：审批人可将待审批申请转交给其他拥有对应审批权限的账号，转审后该账号成为当前节点的审批人，原审批人不再拥有该申请的审批权限。
-•审批状态：待提交（未提交）、待审批（已提交，等待审批）、审批中（部分节点已通过，部分未审批）、已通过（所有节点审批通过）、已驳回（任意节点驳回）、已撤销（申请人主动撤销）。
-3.3 审批结果提醒
-•提醒场景：审批通过、审批驳回、审批转审、审批超时（提醒审批人）。
-•提醒方式（双重提醒，确保触达）：
-        
-￮系统内部消息：登录系统后，消息中心显示提醒，标注提醒类型、相关申请信息、操作时间；
-￮邮件提醒：向申请人（审批通过/驳回）、审批人（待审批/超时/转审）的绑定邮箱发送提醒邮件，包含申请详情、审批状态、操作链接（可直接跳转至对应申请页面）。
-•补充说明：提醒邮件可配置开关，用户可自行选择是否接收邮件提醒（系统内部消息默认开启，不可关闭）。
-3.4 用车申请查询与管理
-•申请人：可查询自己提交的所有用车申请，按审批状态、申请时间、流程模板筛选，查看申请详情、审批历史（所有节点的审批人、审批意见、审批时间），可修改未提交、已驳回的申请，可撤销未审批完成（待审批、审批中）的申请。
-•管理员/用车管理员：可查询全量用车申请，按申请人、所属部门、审批状态、申请时间、流程模板筛选，查看申请详情、审批历史，可导出用车申请数据（Excel格式），处理用车申请异常（如流程卡住、审批人无响应等）。
-•审批人：可查询自己审批过的所有用车申请，查看审批历史，可重新查看已审批的申请详情。
-权限控制（贯穿全系统）
- 通过令牌提供的角色id与部门id到部门-角色表中检验权限，返回前端时返回“无权访问”的错误
-•操作权限：基于角色控制，不同角色拥有不同的菜单、按钮操作权限（如超级管理员可删除部门，普通员工无此权限；审批人仅可操作审批相关按钮，无流程模板修改权限）。
-•数据权限：
-￮普通员工：仅可查看自己提交的用车申请、自己的账号信息、所属部门的基础信息；
-￮部门管理员：可查看本部门及下级部门的账号、用车申请、部门信息，可管理本部门账号；
-￮超级管理员/用车管理员：可查看全量数据，拥有所有操作权限。
-•接口权限：所有接口均需进行账号认证（登录态校验）和权限校验，未登录、无对应权限的账号无法访问接口，防止越权操作。
-五、核心接口需求（按模块划分，支持前后端联调）
-1. 组织管理接口
-•部门接口：新增部门、编辑部门、删除部门、查询部门列表（树形结构）、查询部门下账号、启用/禁用部门；
-•角色接口：新增角色、编辑角色、删除角色、查询角色列表、角色权限分配、查询角色下账号、启用/禁用角色；
-•账号接口：新增账号、编辑账号、删除账号、查询账号列表、密码重置、账号绑定部门与角色、个人信息修改、账号登录/退出。
-2. 流程管理接口
-•流程模板接口：新增流程模板、编辑流程模板、删除流程模板、查询流程模板列表、查询流程模板详情、启用/禁用流程模板；
-•审批人接口：为流程模板分配审批人、修改审批人、删除审批人、查询流程模板关联的审批人。
-3. 用车申请接口
-•申请操作接口：提交用车申请、修改用车申请、撤销用车申请、查询个人用车申请列表、查询全量用车申请列表、查询用车申请详情；
-•审批操作接口：查询待我审批列表、同意审批、驳回审批、转审审批、查询审批历史记录；
-•提醒接口：查询系统消息、标记消息已读、配置邮件提醒开关。
-4. 公共接口
-•登录认证接口：账号密码登录、获取登录令牌（Token）、令牌校验；
-•文件上传接口：用车申请附件上传；
-•数据导出接口：用车申请数据导出（Excel）。
+---
 
-Java前后端项目
+## 技术栈
+
+| 层级      | 技术                                      | 版本/说明                          |
+| --------- | ----------------------------------------- | ---------------------------------- |
+| 前端框架  | Vue 3 (Composition API, `<script setup>`) | —                                  |
+| 构建工具  | Vite                                      | —                                  |
+| UI 库     | Element Plus                              | 含图标库 `@element-plus/icons-vue` |
+| 状态管理  | Pinia                                     | `auth` 和 `app` 两个 store         |
+| 路由      | Vue Router 4                              | createWebHistory                   |
+| HTTP 请求 | Axios                                     | `baseURL: /api`，请求/响应拦截器   |
+| 后端框架  | Spring Boot                               | —                                  |
+| ORM       | MyBatis Plus                              | LambdaQueryWrapper                 |
+| 数据库    | MySQL                                     | 8.0+                               |
+| 工具库    | Hutool, Lombok                            | —                                  |
+| 认证      | JWT                                       | Token 存 localStorage              |
+
+---
+
+## 项目结构
+
+### 前端 (`vue-VehicleApplication`)
+
+```
+src/
+├── api/                    # API 请求层
+│   ├── request.js          # Axios 实例（拦截器、基础配置）
+│   ├── auth.js             # 登录/刷新Token/找回密码
+│   ├── user.js             # 用户增删改查、重置密码
+│   ├── dept.js             # 部门增删改查、树形结构
+│   ├── role.js             # 角色管理 + 部门-角色关联
+│   ├── apply.js            # 申请提交/列表/详情/导出
+│   ├── approve.js          # 审批同意/驳回/转审/历史
+│   ├── flow.js             # 流程模板管理
+│   ├── approver.js         # 审批人分配
+│   ├── message.js          # 消息列表/已读
+│   └── upload.js           # 文件上传
+├── directives/
+│   └── permission.js       # v-permission 指令（按钮级权限）
+├── layout/
+│   └── MainLayout.vue      # 主布局（侧边栏 + 顶栏 + 内容区）
+├── router/
+│   └── index.js            # 路由配置 + 导航守卫
+├── stores/
+│   ├── auth.js             # 认证状态（Token、用户信息）
+│   └── app.js              # 应用状态（侧边栏折叠、未读数）
+├── utils/
+│   └── constants.js        # 常量定义（角色、状态、类型映射）
+├── views/
+│   ├── login/
+│   │   ├── Login.vue       # 登录页
+│   │   └── ForgotPassword.vue  # 找回密码
+│   ├── dashboard/
+│   │   └── Dashboard.vue   # 首页
+│   ├── org/
+│   │   ├── DeptManagement.vue    # 部门管理（树形）
+│   │   ├── RoleManagement.vue    # 角色管理
+│   │   └── AccountManagement.vue # 账号管理
+│   ├── flow/
+│   │   ├── TemplateManagement.vue  # 流程模板
+│   │   └── ApproverManagement.vue  # 审批人管理
+│   ├── apply/
+│   │   ├── MyApplication.vue      # 我的申请
+│   │   ├── AllApplication.vue     # 全量申请
+│   │   ├── ApplicationForm.vue    # 申请表单（新建/编辑）
+│   │   └── ApplicationDetail.vue  # 申请详情
+│   ├── approve/
+│   │   └── PendingList.vue        # 待审批列表
+│   ├── message/
+│   │   └── MessageList.vue        # 消息中心
+│   └── profile/
+│       └── Profile.vue            # 个人设置
+├── App.vue
+└── main.js                 # 入口（注册 Element Plus、全局方法）
+```
+
+### 后端 (`VehicleApplication/src/main/java/com/baoying/vehicleapplication`)
+
+```
+├── VehicleApplication.java           # 启动类
+├── annotation/
+│   └── RequirePermission.java        # 权限注解（roles + dataScope）
+├── common/
+│   ├── Result.java                   # 统一响应体
+│   ├── BusinessException.java        # 业务异常
+│   ├── GlobalExceptionHandler.java   # 全局异常处理器
+│   ├── ApplyStatusEnum.java          # 申请状态枚举
+│   ├── VehicleTypeEnum.java          # 车辆类型枚举
+│   └── PageHelper.java               # 分页工具
+├── config/
+│   ├── JwtConfig.java                # JWT 配置
+│   ├── MybatisPlusConfig.java        # MyBatis Plus 分页插件
+│   ├── WebMvcConfig.java             # Web MVC 配置（拦截器注册）
+│   └── StringToLongConverter.java    # 类型转换器
+├── interceptor/
+│   ├── JwtInterceptor.java           # JWT 认证拦截器
+│   └── PermissionInterceptor.java    # 权限校验拦截器
+├── controller/                       # 控制器（见 API 章节）
+├── service/                          # 服务接口
+│   ├── AuthService.java / AuthServiceImpl.java
+│   ├── UserService.java / UserServiceImpl.java
+│   ├── DeptService.java / DeptServiceImpl.java
+│   ├── RoleService.java / RoleServiceImpl.java
+│   ├── CarApplicationService.java / CarApplicationServiceImpl.java
+│   ├── ApprovalFlowService.java / ApprovalFlowServiceImpl.java
+│   ├── ProcessTemplateService.java / ProcessTemplateServiceImpl.java
+│   ├── ProcessApproverService.java / ProcessApproverServiceImpl.java
+│   ├── MessageService.java / MessageServiceImpl.java
+│   ├── ApprovalNotificationService.java / ApprovalNotificationServiceImpl.java
+│   └── EmailService.java / EmailServiceImpl.java
+│   └── ApprovalTimeoutTask.java      # 审批超时定时任务
+├── entity/                           # 数据实体
+│   ├── SysUser.java
+│   ├── SysDept.java
+│   ├── SysRole.java
+│   ├── SysDeptRole.java
+│   ├── SysUserRole.java
+│   ├── SysMessage.java
+│   ├── CarApplication.java
+│   ├── ProcessTemplate.java
+│   ├── ProcessHistory.java
+│   └── ProcessApprover.java
+├── mapper/                           # MyBatis Plus Mapper
+├── dto/request/                      # 请求 DTO
+├── dto/response/                     # 响应 DTO
+└── utils/
+    ├── JwtUtils.java                 # JWT 工具
+    ├── CurrentUserUtils.java          # 当前用户上下文
+    ├── PasswordUtils.java            # 密码加密
+    └── CollectionUtils.java          # 集合工具
+```
+
+---
+
+## 数据库表结构
+
+### `sys_user` — 用户表
+
+| 字段                 | 类型         | 说明                  |
+| -------------------- | ------------ | --------------------- |
+| id                   | bigint PK    |                       |
+| username             | varchar(50)  | 登录名，唯一          |
+| password             | varchar(200) | BCrypt 加密           |
+| realname             | varchar(50)  | 真实姓名              |
+| phone                | varchar(20)  | 手机号                |
+| email                | varchar(100) | 邮箱                  |
+| dept_id              | int          | 所属部门              |
+| role_id              | int          | 角色（单个角色）      |
+| status               | int          | 1=启用 0=禁用         |
+| email_notify         | int          | 1=开启邮件通知 0=关闭 |
+| is_temp_password     | int          | 0=否 1=是（临时密码） |
+| temp_password_expire | datetime     | 临时密码过期时间      |
+| create_time          | datetime     |                       |
+| last_login_time      | datetime     |                       |
+
+### `sys_dept` — 部门表
+
+| 字段        | 类型         | 说明                      |
+| ----------- | ------------ | ------------------------- |
+| id          | int PK       |                           |
+| name        | varchar(50)  | 部门名称，唯一            |
+| parent_id   | int          | 上级部门ID（null=根节点） |
+| sort        | int          | 排序号                    |
+| description | varchar(200) |                           |
+| status      | int          | 1=启用 0=禁用             |
+| create_time | datetime     |                           |
+| create_by   | bigint       |                           |
+
+### `sys_role` — 角色表
+
+| 字段        | 类型         | 说明                                                         |
+| ----------- | ------------ | ------------------------------------------------------------ |
+| id          | int PK       | 预设：1=超级管理员 2=部门管理员 3=用车管理员 4=普通员工 5=审批人 6=实习生 |
+| name        | varchar(50)  | 唯一                                                         |
+| description | varchar(200) |                                                              |
+| status      | int          | 1=启用 0=禁用                                                |
+| create_time | datetime     |                                                              |
+
+### `sys_dept_role` — 部门-角色关联
+
+| 字段       | 类型        | 说明                                                       |
+| ---------- | ----------- | ---------------------------------------------------------- |
+| dept_id    | int PK      | 部门ID                                                     |
+| role_id    | int PK      | 角色ID                                                     |
+| data_scope | varchar(20) | self=仅本人 dept=本部门 dept_and_sub=本部门及下级 all=全部 |
+
+### `sys_user_role` — 用户-角色关联（预留）
+
+| 字段    | 类型      | 说明 |
+| ------- | --------- | ---- |
+| user_id | bigint PK |      |
+| role_id | int PK    |      |
+
+### `sys_message` — 消息表
+
+| 字段         | 类型         | 说明                                                         |
+| ------------ | ------------ | ------------------------------------------------------------ |
+| id           | bigint PK    |                                                              |
+| user_id      | bigint       | 接收人                                                       |
+| title        | varchar(200) |                                                              |
+| content      | text         |                                                              |
+| message_type | int          | 1=待审批提醒 2=审批通过 3=审批驳回 4=转审通知 5=审批超时 6=密码通知 7=密码重置申请 |
+| apply_id     | bigint       | 关联申请ID（可跳转）                                         |
+| is_read      | int          | 0=未读 1=已读                                                |
+| read_time    | datetime     |                                                              |
+| create_time  | datetime     |                                                              |
+
+### `process_template` — 流程模板表
+
+| 字段        | 类型         | 说明                               |
+| ----------- | ------------ | ---------------------------------- |
+| template_id | int PK       |                                    |
+| name        | varchar(100) | 模板名称，唯一                     |
+| description | varchar(500) |                                    |
+| type        | int          | 1=内部用车 2=跨部门用车 3=长途用车 |
+| node_config | text         | JSON 格式的节点配置                |
+| status      | int          | 1=启用 0=禁用                      |
+| create_by   | bigint       |                                    |
+| create_time | datetime     |                                    |
+| update_time | datetime     |                                    |
+
+`node_config` JSON 结构：
+
+```json
+[
+  {
+    "nodeOrder": 1,
+    "nodeName": "部门管理员审批",
+    "approveType": "single",         // single=或签, all=会签
+    "approverType": "role",          // role/user/mixed
+    "approverValue": [2],            // 角色ID列表或用户ID列表
+    "dynamicType": "applicant_dept", // target_dept=目标部门, applicant_dept=申请人部门
+    "timeoutHours": 24,              // 超时阈值（0=不检查）
+    "rejectRule": "return_to_start"  // return_to_start=返回发起人, end=直接结束
+  }
+]
+```
+
+### `process_approver` — 审批人分配表
+
+| 字段        | 类型      | 说明         |
+| ----------- | --------- | ------------ |
+| id          | bigint PK |              |
+| template_id | int       |              |
+| node_order  | int       |              |
+| user_id     | bigint    | 审批人用户ID |
+
+### `process_apply` — 用车申请表
+
+| 字段                 | 类型         | 说明                                                         |
+| -------------------- | ------------ | ------------------------------------------------------------ |
+| id                   | bigint PK    |                                                              |
+| title                | varchar(200) | 申请标题                                                     |
+| start_time           | date         | 用车开始日期                                                 |
+| end_time             | date         | 用车结束日期                                                 |
+| reason               | text         | 事由                                                         |
+| passengers           | int          | 人数                                                         |
+| destination          | varchar(200) | 目的地                                                       |
+| vehicle_type         | int          | 1=轿车 2=商务车 3=大巴 4=小巴 5=其他                         |
+| attachment           | varchar(500) | 附件路径                                                     |
+| apply_by             | bigint       | 申请人ID                                                     |
+| create_time          | datetime     |                                                              |
+| update_time          | datetime     |                                                              |
+| dept_id              | int          | 申请人部门ID                                                 |
+| target_dept_id       | int          | 跨部门用车目标部门                                           |
+| template_id          | int          | 使用的模板ID                                                 |
+| current_node         | int          | 当前审批节点序号                                             |
+| current_approver_ids | varchar(200) | 当前节点审批人ID（逗号分隔）                                 |
+| status               | int          | 0=待提交 1=待审批 2=审批中 3=已通过 4=已驳回 5=已撤销 6=已驳回(不可提交) |
+| is_urgent            | int          | 0=正常 1=紧急                                                |
+| node_config_snapshot | text         | 提交时的模板节点配置快照（JSON）                             |
+
+### `process_history` — 审批历史表
+
+| 字段         | 类型         | 说明                     |
+| ------------ | ------------ | ------------------------ |
+| id           | bigint PK    |                          |
+| apply_id     | bigint       | 申请ID                   |
+| node_order   | int          | 节点序号                 |
+| node_name    | varchar(100) | 节点名称                 |
+| process_by   | bigint       | 审批人ID                 |
+| action       | int          | 1=同意 2=驳回 3=转审     |
+| opinion      | varchar(500) | 审批意见                 |
+| transfer_to  | varchar(200) | 转审目标人ID（逗号分隔） |
+| process_time | datetime     |                          |
+
+---
+
+## API 接口参考
+
+### 认证模块
+
+| 方法 | 路径                   | 说明      | 权限         |
+| ---- | ---------------------- | --------- | ------------ |
+| POST | `/api/login`           | 登录      | 无           |
+| POST | `/api/forgot-password` | 找回密码  | 无           |
+| POST | `/api/refresh`         | 刷新Token | 无           |
+| GET  | `/api/validate`        | 验证Token | 无           |
+| GET  | `/api/export`          | 导出Excel | 任意登录用户 |
+| POST | `/api/upload`          | 文件上传  | 任意登录用户 |
+
+### 用户管理
+
+| 方法   | 路径                    | 说明             | 权限     |
+| ------ | ----------------------- | ---------------- | -------- |
+| GET    | `/org/user/list`        | 用户列表（分页） | role=1,2 |
+| POST   | `/org/user/create`      | 新增用户         | role=1,2 |
+| PUT    | `/org/user/update`      | 编辑用户         | role=1,2 |
+| DELETE | `/org/user/delete/{id}` | 删除用户         | role=1,2 |
+| PUT    | `/org/user/status/{id}` | 启用/禁用用户    | role=1,2 |
+| PUT    | `/org/user/reset-pwd`   | 重置密码         | role=1,2 |
+| GET    | `/org/user/detail/{id}` | 用户详情         | role=1,2 |
+| GET    | `/org/user/current`     | 当前用户信息     | 登录     |
+| GET    | `/org/user/getName`     | 获取用户名       | 登录     |
+| PUT    | `/org/user/profile`     | 修改个人信息     | 登录     |
+| PUT    | `/org/user/change-pwd`  | 修改密码         | 登录     |
+
+### 部门管理
+
+| 方法   | 路径                             | 说明                                   | 权限   |
+| ------ | -------------------------------- | -------------------------------------- | ------ |
+| POST   | `/org/dept/add`                  | 新增部门                               | role=1 |
+| PUT    | `/org/dept/update`               | 编辑部门                               | role=1 |
+| DELETE | `/org/dept/delete/{id}`          | 删除部门（可选 targetDeptId 转移账号） | role=1 |
+| PUT    | `/org/dept/status/{id}/{status}` | 启用/禁用（递归子部门）                | role=1 |
+| GET    | `/org/dept/tree`                 | 部门树                                 | 登录   |
+| GET    | `/org/dept/list`                 | 部门列表（扁平）                       | 登录   |
+| GET    | `/org/dept/detail/{id}`          | 部门详情                               | 登录   |
+| GET    | `/org/dept/user-count/{id}`      | 部门下用户数                           | role=1 |
+| GET    | `/org/dept/users/{deptId}`       | 部门下用户列表                         | 登录   |
+| PUT    | `/org/dept/transfer`             | 部门转移                               | role=1 |
+| PUT    | `/org/dept/sort/batch`           | 批量排序                               | role=1 |
+
+### 角色管理
+
+| 方法   | 路径                             | 说明          | 权限   |
+| ------ | -------------------------------- | ------------- | ------ |
+| POST   | `/org/role/add`                  | 新增角色      | role=1 |
+| PUT    | `/org/role/update`               | 编辑角色      | role=1 |
+| DELETE | `/org/role/delete/{id}`          | 删除角色      | role=1 |
+| PUT    | `/org/role/status/{id}/{status}` | 启用/禁用角色 | role=1 |
+| GET    | `/org/role/list`                 | 角色列表      | 登录   |
+| GET    | `/org/role/detail/{id}`          | 角色详情      | 登录   |
+
+### 部门-角色关联
+
+| 方法   | 路径                                | 说明                 | 权限   |
+| ------ | ----------------------------------- | -------------------- | ------ |
+| POST   | `/org/role/dept/assign`             | 为部门分配角色       | role=1 |
+| DELETE | `/org/role/dept/remove`             | 从部门移除角色       | role=1 |
+| PUT    | `/org/role/dept/data-scope`         | 修改数据范围         | role=1 |
+| GET    | `/org/role/dept/roles/{deptId}`     | 部门已关联的角色列表 | 登录   |
+| GET    | `/org/role/dept/available/{deptId}` | 部门可选的未关联角色 | 登录   |
+
+### 流程模板
+
+| 方法   | 路径                         | 说明          | 权限   |
+| ------ | ---------------------------- | ------------- | ------ |
+| POST   | `/flow/template/add`         | 新增模板      | role=1 |
+| PUT    | `/flow/template/update`      | 编辑模板      | role=1 |
+| DELETE | `/flow/template/delete/{id}` | 删除模板      | role=1 |
+| PUT    | `/flow/template/status/{id}` | 启用/禁用模板 | role=1 |
+| GET    | `/flow/template/list`        | 模板列表      | 登录   |
+| GET    | `/flow/template/detail/{id}` | 模板详情      | 登录   |
+
+### 审批人管理
+
+| 方法   | 路径                                     | 说明           | 权限   |
+| ------ | ---------------------------------------- | -------------- | ------ |
+| POST   | `/flow/approver/assign`                  | 分配审批人     | role=1 |
+| POST   | `/flow/approver/batch-assign`            | 批量分配       | role=1 |
+| PUT    | `/flow/approver/update`                  | 修改审批人配置 | role=1 |
+| DELETE | `/flow/approver/delete`                  | 删除审批人     | role=1 |
+| DELETE | `/flow/approver/delete-all/{templateId}` | 清空模板审批人 | role=1 |
+| GET    | `/flow/approver/list/{templateId}`       | 模板审批人列表 | 登录   |
+
+### 申请管理
+
+| 方法   | 路径                              | 说明               | 权限     |
+| ------ | --------------------------------- | ------------------ | -------- |
+| POST   | `/apply/sub/save`                 | 保存草稿           | 登录     |
+| PUT    | `/apply/sub/submit/{applyId}`     | 提交草稿           | 本人     |
+| POST   | `/apply/sub/submit-directly`      | 直接提交           | 登录     |
+| PUT    | `/apply/sub/update`               | 修改申请           | 本人     |
+| DELETE | `/apply/sub/cancel/{applyId}`     | 撤销申请           | 本人     |
+| GET    | `/apply/sub/my-list`              | 我的申请（分页）   | 本人     |
+| GET    | `/apply/sub/all-list`             | 全量申请（分页）   | role=1,2 |
+| GET    | `/apply/sub/pending-list`         | 待我审批列表       | 本人     |
+| GET    | `/apply/sub/detail/{applyId}`     | 申请详情           | 登录     |
+| GET    | `/apply/sub/vehicle-types/{type}` | 可用车辆类型       | 登录     |
+| GET    | `/apply/sub/approved-by-me`       | 我审批过的（分页） | 本人     |
+| POST   | `/apply/sub/handle-abnormal/{id}` | 处理异常申请       | role=1,2 |
+
+### 审批操作
+
+| 方法 | 路径                           | 说明     | 权限           |
+| ---- | ------------------------------ | -------- | -------------- |
+| POST | `/apply/app/agree`             | 审批同意 | 当前节点审批人 |
+| POST | `/apply/app/reject`            | 审批驳回 | 当前节点审批人 |
+| POST | `/apply/app/transfer`          | 转审     | 当前节点审批人 |
+| GET  | `/apply/app/history/{applyId}` | 审批历史 | 登录           |
+
+### 消息
+
+| 方法 | 路径                    | 说明             | 权限 |
+| ---- | ----------------------- | ---------------- | ---- |
+| GET  | `/msg/list`             | 消息列表（分页） | 登录 |
+| PUT  | `/msg/read/{messageId}` | 标记已读         | 本人 |
+| PUT  | `/msg/read-all`         | 全部已读         | 本人 |
+| GET  | `/msg/unread-count`     | 未读数           | 登录 |
+
+---
+
+## 角色与权限体系
+
+### 预设角色
+
+| ID   | 名称       | 说明                             |
+| ---- | ---------- | -------------------------------- |
+| 1    | 超级管理员 | 所有管理功能                     |
+| 2    | 部门管理员 | 账号管理、流程管理、全量申请查看 |
+| 3    | 用车管理员 | 审批管理                         |
+| 4    | 普通员工   | 提交申请                         |
+| 5    | 审批人     | 审批管理                         |
+| 6    | 实习生     | —                                |
+
+### 菜单可见性
+
+| 菜单       | 可见角色     |
+| ---------- | ------------ |
+| 首页       | 全部         |
+| 提交申请   | 全部         |
+| 我的申请   | 全部         |
+| 部门管理   | role=1       |
+| 角色管理   | role=1       |
+| 账号管理   | role=1,2     |
+| 流程模板   | role=1,2     |
+| 审批人管理 | role=1,2     |
+| 全量申请   | role=1,2     |
+| 审批管理   | role=1,2,3,5 |
+| 消息中心   | 全部         |
+| 个人设置   | 全部         |
+
+### 权限控制方式
+
+1. **后端接口**：`@RequirePermission(roles = {1})` 注解检查用户角色ID
+   - `roles`: 允许的角色ID列表
+   - `dataScope`: 数据范围（self/dept/dept_and_sub/all），默认 self
+   - `checkRole`: 是否检查角色（设为 false 则仅校验登录状态）
+   - 由 `PermissionInterceptor` 执行校验
+
+2. **前端按钮**：`v-permission="[1]"` 指令，参数为允许的角色ID数组
+   - 不传入值时对所有角色可见
+   - 在 `permission.js` 指令中实现
+
+3. **数据权限**：`dataScope` 字段在 `sys_dept_role` 表中配置
+   - `self`: 仅本人数据
+   - `dept`: 本部门数据
+   - `dept_and_sub`: 本部门及下级部门数据
+   - `all`: 全部数据
+   - 行级过滤在 `CarApplicationServiceImpl.applyDataScope()` 中实现
+
+### 部门-角色-数据范围
+
+每个部门可以为关联的角色独立设置数据范围（`sys_dept_role.data_scope`），支持：
+
+- 同一角色在不同部门有不同的数据范围
+- 通过 `RoleController` 的 `/dept/assign`、`/dept/remove`、`/dept/data-scope` 管理
+
+---
+
+## 审批流程
+
+### 状态流转
+
+```
+待提交(0) ──提交──▶ 待审批(1) ──进入节点──▶ 审批中(2) ──全部同意──▶ 已通过(3)
+                     │                       │
+                     ├──转审──▶ (更新审批人)   ├──驳回(return_to_start)──▶ 已驳回(4)
+                     │                       │
+                     └──撤销──▶ 已撤销(5)     └──驳回(end)──▶ 已驳回(不可提交)(6)
+```
+
+### 审批模式
+
+- **或签（single）**：任意一个审批人同意即进入下一节点
+- **会签（all）**：所有审批人同意才进入下一节点
+
+### 驳回规则
+
+- `return_to_start`（默认）：驳回至发起人，可修改后重新提交
+- `end`：直接结束，不可重新提交（状态 6）
+
+### 节点配置
+
+流程模板的 `nodeConfig` 字段为 JSON 数组，每个节点包含：
+
+- `nodeOrder`: 节点序号（从 1 开始）
+- `nodeName`: 节点名称
+- `approveType`: single（或签）/ all（会签）
+- `approverType`: role（按角色）/ user（按用户）/ mixed（混合）
+- `approverValue`: 角色ID列表或用户ID列表
+- `dynamicType`: applicant_dept（申请人部门）/ target_dept（目标部门），影响按角色查找时的部门范围
+- `timeoutHours`: 超时阈值（0=不检查）
+- `rejectRule`: return_to_start / end
+
+### 审批快照
+
+提交申请时，模板的 `nodeConfig` 会复制到 `process_apply.node_config_snapshot`。后续节点跳转使用快照而非模板实时配置，确保已流转的申请不受模板编辑影响。
+
+### 审批超时检查
+
+`ApprovalTimeoutTask` 每分钟执行一次：
+
+- 查询所有待审批/审批中的申请
+- 读取节点配置中的 `timeoutHours`
+- 比较 `updateTime` 与当前时间的差值
+- 超时时发送消息（type=5）给当前审批人
+- 已发送过的不重复发送
+
+---
+
+## 关键业务逻辑
+
+### 申请提交
+
+1. 校验申请信息（标题、日期、事由、人数必填；车辆类型必须符合模板类型；跨部门用车必须选目标部门）
+2. 保存申请信息
+3. 根据模板节点配置获取第一节点审批人
+4. 设置初始状态为 `待审批(1)` 或根据节点数量动态设置
+5. 保存 `node_config_snapshot`
+6. 发送待审批通知给第一个节点审批人
+
+### 部门删除
+
+1. 检查部门下是否有用户
+2. 有用户时进入转移对话框，选择目标部门
+3. 将用户转移到目标部门后删除原部门
+4. 清理 `sys_dept_role` 中该部门的关联记录
+
+### 消息通知
+
+- 审批流转各节点自动发送系统消息
+- 支持邮件通知（需用户在个人设置开启 `email_notify`）
+- 消息包含关联 `apply_id`，可在消息中心点击跳转
+
+---
+
+## 配置参考
+
+### `application.yml` 关键配置
+
+```yaml
+server:
+  port: 4556
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/vehicle?useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+  mail:
+    host: smtp.163.com
+    port: 465
+    username: dujiatai9@163.com
+    password: ZDbF4kdV3tFXTBYH
+
+jwt:
+  secret: vehicle-application-secret-key-2026-secure
+  expiration: 86400000
+
+app:
+  frontend:
+    url: http://localhost:3000
+  email:
+    enabled: true
+  approval:
+    timeout-hours: 24
+  upload:
+    path: ./uploads
+
+aliyun:
+  oss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    bucket-name: shamimoon-byy
+```
+
+### 前端环境
+
+- 端口: 3000（开发服务器）
+- API 代理: `/api` → 后端 `localhost:4556`
+- 前端路由模式: History 模式
+
+---
+
+## 迁移与建表
+
+已提供的 SQL 文件位于 `docs/vehicle/`，按以下顺序执行：
+
+1. `sys_dept.sql` — 部门表
+2. `sys_role.sql` — 角色表
+3. `sys_user.sql` — 用户表
+4. `sys_dept_role.sql` — 部门-角色关联表
+5. `sys_message.sql` — 消息表
+6. `process_template.sql` — 流程模板表
+7. `process_approver.sql` — 审批人分配表
+8. `process_apply.sql` — 申请表
+9. `process_history.sql` — 审批历史表
+10. `migration_20260515.sql` — 迁移（添加 `node_config_snapshot` 列）
+
+---
+
+## 常量与枚举
+
+### 申请状态
+
+| code | label            | type    | 说明                 |
+| ---- | ---------------- | ------- | -------------------- |
+| 0    | 待提交           | info    | 草稿状态             |
+| 1    | 待审批           | warning | 已提交等待审批       |
+| 2    | 审批中           | primary | 会签中或多节点流转中 |
+| 3    | 已通过           | success | 全部审批完成         |
+| 4    | 已驳回           | danger  | 可修改重新提交       |
+| 5    | 已撤销           | info    | 申请人主动撤销       |
+| 6    | 已驳回(不可提交) | danger  | 终止驳回             |
+
+### 车辆类型
+
+| code | 名称   | 可用模板                   |
+| ---- | ------ | -------------------------- |
+| 1    | 轿车   | 内部用车(1), 跨部门用车(2) |
+| 2    | 商务车 | 内部用车(1), 跨部门用车(2) |
+| 3    | 大巴   | 长途用车(3)                |
+| 4    | 小巴   | 长途用车(3)                |
+| 5    | 其他   | 全部                       |
+
+### 模板类型
+
+| code | 名称       |
+| ---- | ---------- |
+| 1    | 内部用车   |
+| 2    | 跨部门用车 |
+| 3    | 长途用车   |
+
+### 消息类型
+
+| type | 说明         |
+| ---- | ------------ |
+| 1    | 待审批提醒   |
+| 2    | 审批通过     |
+| 3    | 审批驳回     |
+| 4    | 转审通知     |
+| 5    | 审批超时     |
+| 6    | 密码通知     |
+| 7    | 密码重置申请 |
+
+### 审批动作
+
+| code | 说明 |
+| ---- | ---- |
+| 1    | 同意 |
+| 2    | 驳回 |
+| 3    | 转审 |
+
+##AI 还是太好用了
