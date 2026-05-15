@@ -1,0 +1,2 @@
+-- 该迁移文件已废弃 — sys_permission / sys_dept_role_permission 表未被实际授权逻辑使用
+-- 权限控制已通过 @RequirePermission(roles = {...}) 注解在角色级别实现

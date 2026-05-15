@@ -1,0 +1,66 @@
+server:
+  port: 4556
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/vehicle?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB        # 单个文件最大大小
+      max-request-size: 50MB     # 整个请求最大大小
+
+  mail:
+    host: smtp.163.com  # SMTP服务器地址
+    port: 465               # SMTP端口
+    username: dujiatai9@163.com  # 发件人邮箱
+    password: ZDbF4kdV3tFXTBYH  # 邮箱授权码
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+              enable: true
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.baoying.vehicleapplication.mybatis.entity
+
+jwt:
+  secret: vehicle-application-secret-key-2026-secure
+  expiration: 86400000
+  token-header: Authorization
+
+app:
+  # 前端地址（用于邮件中的链接）
+  frontend:
+    url: http://localhost:3000
+
+  email:
+    enabled: true  # 启用邮件发送
+
+  approval:
+    timeout-hours: 24  # 超时阈值（小时）
+
+  upload:
+    path: ./uploads  # 上传文件存储路径
+    max-size: 10485760  # 最大文件大小（10MB）
+
+aliyun:
+  oss:
+    endpoint: oss-cn-beijing.aliyuncs.com  # OSS访问域名
+    region: cn-beijing  # 区域
+    bucket-name: shamimoon-byy

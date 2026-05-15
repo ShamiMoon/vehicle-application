@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用车申请系统 - 接口测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .login-section {
+            padding: 40px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            background: #52c41a;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ff4d4f;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #faad14;
+            color: white;
+        }
+
+        .main-content {
+            display: none;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e8e8e8;
+            background: #fafafa;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .result-box.error {
+            background: #fff2f0;
+            border-color: #ffccc7;
+        }
+
+        .result-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .data-table th {
+            background: #fafafa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .data-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+
+        .status-pending {
+            background: #fff7e6;
+            color: #fa8c16;
+            border: 1px solid #ffd591;
+        }
+
+        .status-rejected {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-bar input,
+        .filter-bar select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-buttons .btn {
+            padding: 5px 12px;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab {
+                flex: 1;
+                min-width: 100px;
+            }
+
+            .filter-bar {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 登录区域 -->
+        <div id="loginSection" class="login-section">
+            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">用车申请系统</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="username" required placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="password" required placeholder="请输入密码">
+                </div>
+                <button type="submit" class="btn btn-primary">登录</button>
+            </form>
+            <div id="loginResult" class="result-box"></div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div id="mainContent" class="main-content">
+            <div class="header">
+                <h1>用车申请管理系统</h1>
+                <div class="user-info">
+                    <span id="userInfo">欢迎，<span id="realname"></span></span>
+                    <button onclick="logout()" class="logout-btn">退出登录</button>
+                </div>
+            </div>
+
+            <!-- 标签页 -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('applications')">用车申请</button>
+                <button class="tab" onclick="switchTab('approval')">审批管理</button>
+                <button class="tab" onclick="switchTab('templates')">流程模板</button>
+                <button class="tab" onclick="switchTab('departments')">部门管理</button>
+                <button class="tab" onclick="switchTab('users')">账号管理</button>
+            </div>
+
+            <!-- 用车申请标签页 -->
+            <div id="applications" class="tab-content active">
+                <h3 class="section-title">我的用车申请</h3>
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-success" onclick="showCreateApplication()">+ 新建申请</button>
+                </div>
+                
+                <div class="filter-bar">
+                    <select id="filterStatus" onchange="loadApplications()">
+                        <option value="">全部状态</option>
+                        <option value="0">待提交</option>
+                        <option value="1">待审批</option>
+                        <option value="2">审批中</option>
+                        <option value="3">已通过</option>
+                        <option value="4">已驳回</option>
+                        <option value="5">已撤销</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadApplications()">查询</button>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>申请标题</th>
+                            <th>申请人</th>
+                            <th>用车日期</th>
+                            <th>目的地</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="applicationsList">
+                        <tr><td colspan="7" style="text-align: center;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 审批管理标签页 -->
+            <div id="approval" class="tab-content">
+                <h3 class="section-title">待我审批</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>申请标题</th>
+                            <th>申请人</th>
+                            <th>当前节点</th>
+                            <th>用车日期</th>
+                            <th>等待时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingList">
+                        <tr><td colspan="6" style="text-align: center;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 流程模板标签页 -->
+            <div id="templates" class="tab-content">
+                <h3 class="section-title">流程模板管理</h3>
+                <button class="btn btn-success" onclick="showCreateTemplate()" style="margin-bottom: 20px;">+ 新建模板</button>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>模板名称</th>
+                            <th>流程类型</th>
+                            <th>节点数</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="templatesList">
+                        <tr><td colspan="6" style="text-align: center;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 部门管理标签页 -->
+            <div id="departments" class="tab-content">
+                <h3 class="section-title">部门管理</h3>
+                <button class="btn btn-success" onclick="showCreateDept()" style="margin-bottom: 20px;">+ 新建部门</button>
+                <div id="deptTree"></div>
+            </div>
+
+            <!-- 账号管理标签页 -->
+            <div id="users" class="tab-content">
+                <h3 class="section-title">账号管理</h3>
+                <div class="filter-bar">
+                    <input type="text" id="searchUsername" placeholder="搜索用户名">
+                    <input type="text" id="searchRealName" placeholder="搜索姓名">
+                    <button class="btn btn-primary" onclick="loadUsers()">查询</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>用户名</th>
+                            <th>姓名</th>
+                            <th>手机号</th>
+                            <th>邮箱</th>
+                            <th>部门</th>
+                            <th>角色</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
+                        <tr><td colspan="8" style="text-align: center;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
